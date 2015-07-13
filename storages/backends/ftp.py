@@ -92,6 +92,9 @@ class FTPStorage(Storage):
         self._connection.quit()
         self._connection = None
 
+    def _end_connection(self):
+        self.disconnect()
+
     def _mkremdirs(self, path):
         pwd = self._connection.pwd()
         path_splitted = path.split('/')
@@ -142,6 +145,7 @@ class FTPStorage(Storage):
         content.open()
         self._start_connection()
         self._put_file(name, content)
+        self._end_connection()
         content.close()
         return name
 
@@ -175,6 +179,7 @@ class FTPStorage(Storage):
             # starting with e.g. 1904... instead of 2004...
             if len(s) == 15 and s[:2] == '19':
                 s = str(1900 + int(s[2:5])) + s[5:]
+            self._end_connection()
             return datetime.strptime(s, '%Y%m%d%H%M%S')
         raise FTPStorageException(
                 'Error getting modification time of file %s' % name
@@ -184,6 +189,7 @@ class FTPStorage(Storage):
         self._start_connection()
         try:
             dirs, files = self._get_dir_details(path)
+            self._end_connection()
             return dirs.keys(), files.keys()
         except FTPStorageException:
             raise
@@ -194,6 +200,7 @@ class FTPStorage(Storage):
         self._start_connection()
         try:
             self._connection.delete(name)
+            self._end_connection()
         except ftplib.all_errors:
             raise FTPStorageException('Error when removing %s' % name)
 
@@ -203,6 +210,7 @@ class FTPStorage(Storage):
             nlst = self._connection.nlst(
                 os.path.dirname(name) + '/'
             )
+            self._end_connection()
             if name in nlst or os.path.basename(name) in nlst:
                 return True
             else:
@@ -220,6 +228,7 @@ class FTPStorage(Storage):
         self._start_connection()
         try:
             dirs, files = self._get_dir_details(os.path.dirname(name))
+            self._end_connection()
             if os.path.basename(name) in files:
                 return files[os.path.basename(name)]
             else:
@@ -252,6 +261,7 @@ class FTPStorageFile(File):
         if not self._is_read:
             self._storage._start_connection()
             self.file = self._storage._read(self._name)
+            self._storage._end_connection()
             self._is_read = True
 
         return self.file.read(num_bytes)
@@ -267,5 +277,5 @@ class FTPStorageFile(File):
         if self._is_dirty:
             self._storage._start_connection()
             self._storage._put_file(self._name, self)
-            self._storage.disconnect()
+            self._storage._end_connection()
         self.file.close()
