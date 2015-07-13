@@ -254,7 +254,7 @@ class FTPStorageFile(File):
             self.file = self._storage._read(self._name)
             self._is_read = True
 
-        return self.file.read(num_bytes)
+        return self.file.getvalue()
 
     def write(self, content):
         if 'w' not in self._mode:
